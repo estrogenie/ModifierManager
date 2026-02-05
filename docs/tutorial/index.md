@@ -66,7 +66,8 @@ local function setupPlayer(player: Player)
     playerStats:SetClamps(player, "Combat.Health", 0, nil) -- Min 0, no max
     playerStats:SetClamps(player, "Movement.Speed", 0, 50) -- 0 to 50
 
-    -- Send initial stats to client
+    -- Send initial stats to client after a short delay
+    -- This gives the client time to set up its StatsRemote listener
     task.delay(1, function()
         if player.Parent then
             local allData = playerStats:GetAllSyncData(player)
@@ -326,6 +327,29 @@ Calculation:
 2. Multiply: `130 * 1.2 * 1.1 = 171.6`
 
 If an Override modifier exists with the highest priority, it replaces the result entirely.
+
+---
+
+## Edge Cases
+
+A few things to keep in mind:
+
+- **Reading a stat that doesn't exist** returns `0` — no errors are thrown.
+- **`SetClamps` and `SetDecimalPlaces` require the stat to exist first.** Call `SetBase` before using them, or you'll get an error.
+- **Stat paths must be in `"Category.StatName"` format.** A path like `"Health"` or `"A.B.C"` will error.
+- **`EntityManager` and `PlayerManager` can only be created on the server.** Attempting to call `.new()` on the client will error.
+
+```lua
+-- This is safe — returns 0
+local health = entityStats:Get("nonexistent", "Combat.Health")
+
+-- This will error — stat doesn't exist yet
+entityStats:SetClamps("enemy_1", "Combat.Health", 0, 100)
+
+-- Do this instead
+entityStats:SetBase("enemy_1", "Combat.Health", 50)
+entityStats:SetClamps("enemy_1", "Combat.Health", 0, 100)
+```
 
 ---
 
