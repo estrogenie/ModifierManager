@@ -35,7 +35,7 @@ local ModifierManager = require(ReplicatedStorage.ModifierManager)
 
 ```toml
 [dependencies]
-ModifierManager = "your-scope/modifier-manager@1.0.0"
+ModifierManager = "estrogenie/modifier-manager@1.0.0"
 ```
 
 ---

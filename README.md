@@ -6,6 +6,13 @@ A type-safe stat modifier system for Roblox games. Manage buffs, debuffs, equipm
 
 ## Installation
 
+### Wally
+```toml
+[dependencies]
+ModifierManager = "estrogenie/modifier-manager@1.0.0"
+```
+
+### Manual
 Download the `ModifierManager` folder and place it in `ReplicatedStorage`.
 
 ## Quick Example

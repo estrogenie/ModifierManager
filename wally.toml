@@ -1,0 +1,29 @@
+[package]
+name = "estrogenie/modifier-manager"
+version = "1.0.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+license = "MIT"
+description = "Type-safe stat modifier system for Roblox games"
+authors = ["estrogenie"]
+
+[place]
+SharedPackages = "Packages"
+
+exclude = [
+    "docs/**",
+    ".github/**",
+    ".vscode/**",
+    ".claude/**",
+    ".luau-types/**",
+    "*.md",
+    "mkdocs.yml",
+    "selene.toml",
+    "roblox.yml",
+    "sourcemap.json",
+    ".gitignore",
+    "*.rbxlx",
+    "*.rbxl",
+    "*.rbxlx.lock",
+    "*.rbxl.lock",
+]
