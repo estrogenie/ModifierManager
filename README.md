@@ -12,9 +12,6 @@ A type-safe stat modifier system for Roblox games. Manage buffs, debuffs, equipm
 ModifierManager = "estrogenie/modifier-manager@1.0.0"
 ```
 
-### Manual
-Download the `ModifierManager` folder and place it in `ReplicatedStorage`.
-
 ## Quick Example
 
 ```lua
@@ -37,6 +34,8 @@ stats:AddModifier({
 -- Get calculated value (150)
 local health = stats:Get("enemy_1", "Combat.Health")
 ```
+
+> **Note:** `EntityManager` and `PlayerManager` can only be created on the server. Use `ClientStatReader` on the client.
 
 ## License
 

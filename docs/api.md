@@ -126,7 +126,7 @@ local modifierId = entityStats:AddModifier({
 | `priority` | `number?` | No | Override priority (default: 100) |
 | `tags` | `{string}?` | No | Tags for querying/removal |
 | `duration` | `number?` | No | Seconds until auto-removal |
-| `stackingRule` | `StackingRule?` | No | "Stack", "Replace", "Highest", "Refresh" |
+| `stackingRule` | `StackingRule?` | No | "Stack", "Replace", "Highest", "Refresh" (nil = accumulate) |
 | `minValue` | `number?` | No | Clamp modifier value minimum |
 | `maxValue` | `number?` | No | Clamp modifier value maximum |
 
@@ -365,7 +365,7 @@ local playerStats = ModifierManager.PlayerManager.new()
 PlayerManager.onSyncRequired   [(player: Player, statPath: string, syncData: StatSyncData) -> ()]?
 ```
 
-Callback function invoked when stat data needs to sync to a client. Set this to send data via RemoteEvent.
+Callback function invoked when stat data needs to sync to a client. Set this to send data via RemoteEvent. If not set, stat changes are not synced to clients.
 
 ```lua
 local StatsRemote = Instance.new("RemoteEvent")
@@ -429,8 +429,8 @@ PlayerManager:GetAllStats(player) --> [{string}]
 ### PlayerManager:GetAllSyncData
 
 ```lua
-PlayerManager:GetAllSyncData(player) --> [{[string]: StatSyncData}]
--- Returns all stat sync data for initial client sync
+PlayerManager:GetAllSyncData(player) --> {[string]: StatSyncData}
+-- Returns a dictionary of stat path -> sync data for initial client sync
 ```
 
 Use this when a player joins to send all current stats:
@@ -612,10 +612,13 @@ type StackingRule = "Stack" | "Replace" | "Highest" | "Refresh"
 
 | Rule | Behavior |
 |------|----------|
-| `Stack` | All modifiers accumulate (default) |
+| `Stack` | All modifiers accumulate |
 | `Replace` | New modifier removes existing from same source |
 | `Highest` | Only keeps highest value from same source |
 | `Refresh` | Updates value and resets duration of existing |
+
+!!! note
+    When `stackingRule` is not provided (`nil`), modifiers accumulate without any stacking logic — the same behavior as `"Stack"`, but without checking for existing modifiers from the same source.
 
 ---
 
