@@ -1,0 +1,45 @@
+site_name: ModifierManager
+site_url: https://estrogenie.github.io/ModifierManager
+repo_url: https://github.com/estrogenie/ModifierManager
+repo_name: ModifierManager
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.copy
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: lime
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+nav:
+  - Home: index.md
+  - API: api.md
+  - Tutorial: tutorial/index.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
