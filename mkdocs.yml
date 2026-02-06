@@ -30,6 +30,7 @@ theme:
 nav:
   - Home: index.md
   - Tutorial: tutorial/index.md
+  - Best Practices: best-practices.md
   - API: api.md
   - Changelog: changelog.md
 

@@ -31,7 +31,7 @@ ReplicatedStorage/
 
 ## Basic Usage
 
-ModifierManager runs on the server. The example below shows a basic player stat setup.
+ModifierManager runs on the server. The example below shows a basic player stat setup with client sync.
 
 ### Server Script
 
@@ -45,42 +45,37 @@ local ModifierManager = require(ReplicatedStorage.ModifierManager)
 -- Create manager
 local playerStats = ModifierManager.PlayerManager.new()
 
--- Setup sync (required for client to see stats)
-local StatsRemote = Instance.new("RemoteEvent")
-StatsRemote.Name = "StatsSync"
-StatsRemote.Parent = ReplicatedStorage
+-- Remotes for sync
+local statSyncEvent = ReplicatedStorage.Remotes.Events.StatSync
+local getStatSyncDataFunction = ReplicatedStorage.Remotes.Functions.GetStatSyncData
 
+-- Live sync: fires whenever a stat changes
 playerStats.onSyncRequired = function(player, statPath, syncData)
-    StatsRemote:FireClient(player, statPath, syncData)
+    if not player.Parent then
+        return
+    end
+    statSyncEvent:FireClient(player, statPath, syncData)
+end
+
+-- Initial sync: client requests all stats on load
+getStatSyncDataFunction.OnServerInvoke = function(player: Player)
+    return playerStats:GetAllSyncData(player)
 end
 
 -- Initialize player stats
 local function setupPlayer(player: Player)
-    -- Set base stats
     playerStats:SetBase(player, "Combat.Health", 100)
     playerStats:SetBase(player, "Combat.MaxHealth", 100)
     playerStats:SetBase(player, "Combat.Damage", 10)
     playerStats:SetBase(player, "Movement.Speed", 16)
 
-    -- Set bounds
     playerStats:SetClamps(player, "Combat.Health", 0, nil) -- Min 0, no max
     playerStats:SetClamps(player, "Movement.Speed", 0, 50) -- 0 to 50
-
-    -- Send initial stats to client after a short delay
-    -- This gives the client time to set up its StatsRemote listener
-    task.delay(1, function()
-        if player.Parent then
-            local allData = playerStats:GetAllSyncData(player)
-            for statPath, syncData in allData do
-                StatsRemote:FireClient(player, statPath, syncData)
-            end
-        end
-    end)
 end
 
 Players.PlayerAdded:Connect(setupPlayer)
 for _, player in Players:GetPlayers() do
-    setupPlayer(player)
+    task.spawn(setupPlayer, player)
 end
 ```
 
@@ -93,12 +88,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ModifierManager = require(ReplicatedStorage.ModifierManager)
 
 local reader = ModifierManager.ClientStatReader.new()
-local StatsRemote = ReplicatedStorage:WaitForChild("StatsSync")
+local statSyncEvent = ReplicatedStorage.Remotes.Events.StatSync
+local getStatSyncDataFunction = ReplicatedStorage.Remotes.Functions.GetStatSyncData
 
--- Receive syncs from server
-StatsRemote.OnClientEvent:Connect(function(statPath, syncData)
+-- Receive live syncs from server
+statSyncEvent.OnClientEvent:Connect(function(statPath, syncData)
     reader:ProcessSync(statPath, syncData)
 end)
+
+-- Fetch all current stats on load
+local initialData = getStatSyncDataFunction:InvokeServer()
+if initialData then
+    reader:ProcessBulkSync(initialData)
+end
 
 -- React to changes
 reader:OnChanged("Combat.Health", function(newHealth)
@@ -106,7 +108,6 @@ reader:OnChanged("Combat.Health", function(newHealth)
 end)
 
 -- Read stats anytime
-task.wait(2)
 print("Current speed:", reader:Get("Movement.Speed"))
 ```
 
@@ -355,4 +356,5 @@ entityStats:SetClamps("enemy_1", "Combat.Health", 0, 100)
 
 ## Next Steps
 
-See the [API Reference](../api.md) for complete method documentation.
+- **[Best Practices](../best-practices.md)** - Data-driven config, recommended sync patterns, and a full movement system example
+- **[API Reference](../api.md)** - Complete method documentation and type definitions
