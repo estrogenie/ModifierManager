@@ -80,5 +80,6 @@ local health = entityStats:Get("enemy_1", "Combat.Health")
 ## Next Steps
 
 - **[Tutorial](tutorial/index.md)** - Full walkthrough: server setup, client sync, modifiers, stacking rules, and removal
+- **[Best Practices](best-practices.md)** - Recommended patterns: data-driven config, sync setup, and a movement system example
 - **[API Reference](api.md)** - Complete method documentation and type definitions
 - **[Changelog](changelog.md)** - Version history
