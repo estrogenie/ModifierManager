@@ -4,6 +4,9 @@ A flexible, type-safe stat modifier system for Roblox games.
 
 Manage buffs, debuffs, equipment bonuses, and any numeric stat modifications with automatic expiration, stacking rules, and client synchronization.
 
+!!! warning
+    WARNING: documentation process was primarily driven by AI (with full oversight from me) due to the process otherwise being extremely time consuming. There may be some errors.
+
 ---
 
 ## Features
