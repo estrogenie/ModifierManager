@@ -1,11 +1,11 @@
 [package]
-name = "estrogenie/modifier-manager"
+name = "waterdreamer/modifier-manager"
 version = "1.0.0"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 license = "MIT"
 description = "Type-safe stat modifier system for Roblox games"
-authors = ["estrogenie"]
+authors = ["waterdreamer"]
 
 [place]
 SharedPackages = "Packages"

@@ -28,7 +28,7 @@ Manage buffs, debuffs, equipment bonuses, and any numeric stat modifications wit
 
 ```toml
 [dependencies]
-ModifierManager = "estrogenie/modifier-manager@1.0.0"
+ModifierManager = "waterdreamer/modifier-manager@1.0.0"
 ```
 
 ### Manual

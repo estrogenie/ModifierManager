@@ -2,14 +2,14 @@
 
 A type-safe stat modifier system for Roblox games. Manage buffs, debuffs, equipment bonuses, and stat modifications with automatic expiration, stacking rules, and client sync.
 
-**[Documentation](https://estrogenie.github.io/ModifierManager/)**
+**[Documentation](https://waterdreamer.github.io/ModifierManager/)**
 
 ## Installation
 
 ### Wally
 ```toml
 [dependencies]
-ModifierManager = "estrogenie/modifier-manager@1.0.0"
+ModifierManager = "waterdreamer/modifier-manager@1.0.0"
 ```
 
 ## Quick Example

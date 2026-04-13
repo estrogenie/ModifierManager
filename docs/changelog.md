@@ -22,4 +22,4 @@ Initial release.
 - **Removal methods** - Remove by ID, source, or tag (per-stat and cross-stat)
 - **Stat configuration** - Clamps (`SetClamps`) and decimal rounding (`SetDecimalPlaces`)
 - **Debug info** - `GetDebugInfo` for inspecting stat state
-- **Wally package** - Published as `estrogenie/modifier-manager`
+- **Wally package** - Published as `waterdreamer/modifier-manager`
