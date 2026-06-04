@@ -4,6 +4,14 @@ All notable changes to ModifierManager will be documented in this file.
 
 ---
 
+## 1.0.1
+
+### Fixed
+
+- **`OnChanged` listeners silently dropped** - `SetBase` and `GetStack` reset the internal signal and tag-index tables when first initializing a stat key, wiping any `OnChanged` connection registered beforehand. Listeners hooked before the first `SetBase`/`AddModifier` now survive and fire correctly. Affects `PlayerManager`, `EntityManager`, and `BaseModifierManager`.
+
+---
+
 ## 1.0.0
 
 Initial release.
