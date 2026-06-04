@@ -72,7 +72,11 @@ function EntityModifierManager.GetStack(self: EntityModifierManagerImpl, entity:
 
 	if not self.stacks[entity] then
 		self.stacks[entity] = {}
+	end
+	if not self.signals[entity] then
 		self.signals[entity] = {}
+	end
+	if not self.tagIndex[entity] then
 		self.tagIndex[entity] = {}
 	end
 

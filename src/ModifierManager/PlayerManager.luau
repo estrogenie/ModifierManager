@@ -156,7 +156,11 @@ function PlayerModifierManager.GetStack(self: PlayerModifierManagerImpl, player:
 
 	if not self.stacks[player] then
 		self.stacks[player] = {}
+	end
+	if not self.signals[player] then
 		self.signals[player] = {}
+	end
+	if not self.tagIndex[player] then
 		self.tagIndex[player] = {}
 	end
 

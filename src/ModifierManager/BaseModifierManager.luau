@@ -547,7 +547,11 @@ function BaseModifierManager.SetBase(self: BaseModifierManagerImpl, stackKey: St
 
 	if not self.stacks[stackKey] then
 		self.stacks[stackKey] = {}
+	end
+	if not self.signals[stackKey] then
 		self.signals[stackKey] = {}
+	end
+	if not self.tagIndex[stackKey] then
 		self.tagIndex[stackKey] = {}
 	end
 
