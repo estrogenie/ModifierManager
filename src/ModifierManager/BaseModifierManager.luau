@@ -1,4 +1,6 @@
+-- Connected Discord-GitHub | Discord: naturalvalkyrie (515834258896715788) | Roblox: NaturalValkyrie (1023948619)
 --!strict
+-- shared base both managers inherit from with metatables holds all the actual stat logic
 local Signal = require(script.Parent.Packages.Signal)
 local Trove = require(script.Parent.Packages.Trove)
 local Types = require(script.Parent.Types)
@@ -37,6 +39,7 @@ BaseModifierManager.VALID_MODIFIER_TYPES = VALID_MODIFIER_TYPES
 BaseModifierManager.VALID_STACKING_RULES = VALID_STACKING_RULES
 
 function BaseModifierManager.new(): BaseModifierManagerImpl
+	-- all the state stacks signals tag index expiry queue lazy removals trove and cleanup timer
 	local self: BaseModifierManagerImpl = setmetatable({
 		stacks = {},
 		signals = {},
@@ -50,6 +53,7 @@ function BaseModifierManager.new(): BaseModifierManagerImpl
 	return self
 end
 
+-- order matters here SO kill the timer first so it cant fire while were mid destroy then drop the signals trove and tables
 function BaseModifierManager.Destroy(self: BaseModifierManagerImpl)
 	if self.scheduledCleanupThread then
 		task.cancel(self.scheduledCleanupThread)
@@ -70,6 +74,7 @@ function BaseModifierManager.Destroy(self: BaseModifierManagerImpl)
 	self.pendingRemovals = {}
 end
 
+-- enforces the category.statname format every path follows splitting on the dot and erroring if its not exactly two parts
 function BaseModifierManager.ValidateStatPath(_self: BaseModifierManagerImpl, statPath: string): (string, string)
 	if type(statPath) ~= "string" or statPath == "" then
 		error("statPath must be a non-empty string")
@@ -83,6 +88,7 @@ function BaseModifierManager.ValidateStatPath(_self: BaseModifierManagerImpl, st
 	return parts[1], parts[2]
 end
 
+-- one timer pointed at whatever expires soonest instead of checking every frame
 function BaseModifierManager.ScheduleNextCleanup(self: BaseModifierManagerImpl)
 	if self.scheduledCleanupThread then
 		task.cancel(self.scheduledCleanupThread)
@@ -103,6 +109,7 @@ function BaseModifierManager.ScheduleNextCleanup(self: BaseModifierManagerImpl)
 	end)
 end
 
+-- binary search the right spot since modifiers stay sorted by priority way cheaper than resorting
 function BaseModifierManager.FindInsertIndexBinarySearch(_self: BaseModifierManagerImpl, modifiers: { Modifier }, priority: number): number
 	if #modifiers == 0 then
 		return 1
@@ -124,6 +131,7 @@ function BaseModifierManager.FindInsertIndexBinarySearch(_self: BaseModifierMana
 	return insertIndex
 end
 
+-- binary insert by expire time keeps index 1 as the next to expire and if this one lands first we rearm the timer for it
 function BaseModifierManager.AddToExpirationQueue(self: BaseModifierManagerImpl, stackKey: StackKey, statPath: string, modifierId: string, expireTime: number)
 	local entry: ExpirationEntry = {
 		expireTime = expireTime,
@@ -158,10 +166,12 @@ function BaseModifierManager.AddToExpirationQueue(self: BaseModifierManagerImpl,
 	end
 end
 
+-- just flag the id instead of removing now cause splicing is slow cleanup skips it later
 function BaseModifierManager.RemoveFromExpirationQueue(self: BaseModifierManagerImpl, modifierId: string)
 	self.pendingRemovals[modifierId] = true
 end
 
+-- pops everything past its expire time off the front and skips any id that got lazily flagged for removal earlier
 function BaseModifierManager.CleanupExpiredModifiers(self: BaseModifierManagerImpl)
 	local currentTime = os.clock()
 
@@ -201,6 +211,7 @@ function BaseModifierManager.CleanupExpiredModifiers(self: BaseModifierManagerIm
 	end
 end
 
+-- reverse lookup of tag to modifier ids so removebytag doesnt have to scan everything
 function BaseModifierManager.AddModifierToTagIndex(self: BaseModifierManagerImpl, stackKey: StackKey, statPath: string, modifier: Modifier)
 	if not self.tagIndex[stackKey] then
 		self.tagIndex[stackKey] = {}
@@ -219,6 +230,7 @@ function BaseModifierManager.AddModifierToTagIndex(self: BaseModifierManagerImpl
 	end
 end
 
+-- removes the id then prunes the empty tables it leaves behind otherwise the tag index slowly leaks dead entries
 function BaseModifierManager.RemoveModifierFromTagIndex(self: BaseModifierManagerImpl, stackKey: StackKey, statPath: string, modifier: Modifier)
 	if not self.tagIndex[stackKey] then
 		return
@@ -246,6 +258,7 @@ function BaseModifierManager.RemoveModifierFromTagIndex(self: BaseModifierManage
 	end
 end
 
+-- handles same source modifiers replace highest or refresh returns an id if it dealt with it
 function BaseModifierManager.HandleStackingRule(
 	self: BaseModifierManagerImpl,
 	stack: StatStack,
@@ -327,6 +340,7 @@ function BaseModifierManager.RemoveModifierById(self: BaseModifierManagerImpl, s
 	return false
 end
 
+-- loops backwards on purpose so removing entries doesnt shift the indexes were still iterating over
 function BaseModifierManager.RemoveBySource(self: BaseModifierManagerImpl, stackKey: StackKey, statPath: string, source: string): number
 	if not self.stacks[stackKey] then
 		return 0
@@ -356,6 +370,7 @@ function BaseModifierManager.RemoveBySource(self: BaseModifierManagerImpl, stack
 	return removedCount
 end
 
+-- goes through the tag index to find matches instead of scanning every modifier on the stack
 function BaseModifierManager.RemoveByTag(self: BaseModifierManagerImpl, stackKey: StackKey, statPath: string, tag: string): number
 	if not self.stacks[stackKey] then
 		return 0
@@ -427,6 +442,7 @@ function BaseModifierManager.RemoveAllByTag(self: BaseModifierManagerImpl, stack
 	return totalRemoved
 end
 
+-- only recompute if dirty otherwise return the cached value the math itself is in calculator
 function BaseModifierManager.CalculateValue(_self: BaseModifierManagerImpl, stack: StatStack): number
 	if not stack.isDirty and stack.cachedValue then
 		return stack.cachedValue
@@ -513,6 +529,7 @@ function BaseModifierManager.GetModifiersByTag(self: BaseModifierManagerImpl, st
 	return tagModifiers
 end
 
+-- recomputes the stat then fires its signal so listeners get the fresh value instead of a stale one
 function BaseModifierManager.TriggerChange(self: BaseModifierManagerImpl, statPath: string, stackKey: StackKey)
 	if not self.signals[stackKey] then
 		return
@@ -525,6 +542,7 @@ function BaseModifierManager.TriggerChange(self: BaseModifierManagerImpl, statPa
 	self.signals[stackKey][statPath]:Fire(newValue)
 end
 
+-- only creates the signal for a stat the first time something listens so were not making signals nobody ever uses
 function BaseModifierManager.OnChanged(self: BaseModifierManagerImpl, stackKey: StackKey, statPath: string, callback: (newValue: number) -> ()): any
 	if not self.signals[stackKey] then
 		self.signals[stackKey] = {}
@@ -538,6 +556,7 @@ function BaseModifierManager.OnChanged(self: BaseModifierManagerImpl, stackKey: 
 	return self.signals[stackKey][statPath]:Connect(callback)
 end
 
+-- rejects nan (x ~= x) and infinity before setting so one bad number cant poison every calculation off this stat
 function BaseModifierManager.SetBase(self: BaseModifierManagerImpl, stackKey: StackKey, statPath: string, baseValue: number)
 	BaseModifierManager.ValidateStatPath(self, statPath)
 
