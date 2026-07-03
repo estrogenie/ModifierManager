@@ -99,9 +99,12 @@ function BaseModifierManager.ScheduleNextCleanup(self: BaseModifierManagerImpl)
 		return
 	end
 
+	-- soonest to expire is always at the front so thats what we aim the timer at
 	local nextEntry = self.expirationQueue[1] :: ExpirationEntry
+	-- time left until it fires clamped at 0 so an already overdue one runs now instead of with a negative delay
 	local delay = math.max(0, nextEntry.expireTime - os.clock())
 
+	-- one timer that cleans up then rearms itself for whatever the next soonest turns out to be
 	self.scheduledCleanupThread = task.delay(delay, function()
 		(self :: any).scheduledCleanupThread = nil
 		;(self :: any):CleanupExpiredModifiers()
@@ -112,23 +115,26 @@ end
 -- binary search the right spot since modifiers stay sorted by priority way cheaper than resorting
 function BaseModifierManager.FindInsertIndexBinarySearch(_self: BaseModifierManagerImpl, modifiers: { Modifier }, priority: number): number
 	if #modifiers == 0 then
-		return 1
+		return 1 -- empty list so it just goes at the front
 	end
 
+	-- left/right is the window were still searching insertindex is our best answer so far
 	local left, right = 1, #modifiers
-	local insertIndex = #modifiers + 1
+	local insertIndex = #modifiers + 1 -- default to the end if nothing outranks us
 
 	while left <= right do
-		local mid = math.floor((left + right) / 2)
+		local mid = math.floor((left + right) / 2) -- middle of whats left to search
 		if modifiers[mid].priority > priority then
+			-- mid outranks us so we belong at or before it remember the spot and keep searching the left half
 			insertIndex = mid
 			right = mid - 1
 		else
+			-- mid is lower or equal so our spot has to be somewhere to the right
 			left = mid + 1
 		end
 	end
 
-	return insertIndex
+	return insertIndex -- first slot with a higher priority than ours which is what keeps the list sorted
 end
 
 -- binary insert by expire time keeps index 1 as the next to expire and if this one lands first we rearm the timer for it
@@ -140,27 +146,32 @@ function BaseModifierManager.AddToExpirationQueue(self: BaseModifierManagerImpl,
 		modifierId = modifierId,
 	}
 
+	-- nothing queued yet so it goes straight in and kicks off the timer
 	if #self.expirationQueue == 0 then
 		table.insert(self.expirationQueue, entry)
 		BaseModifierManager.ScheduleNextCleanup(self)
 		return
 	end
 
+	-- binary search for the slot that keeps the queue sorted soonest first
 	local left, right = 1, #self.expirationQueue
 	local insertIndex = #self.expirationQueue + 1
 
 	while left <= right do
 		local mid = math.floor((left + right) / 2)
 		if self.expirationQueue[mid].expireTime <= expireTime then
+			-- mid expires sooner or at the same time so our spot is after it
 			left = mid + 1
 			insertIndex = left
 		else
+			-- mid expires later so we belong before it
 			right = mid - 1
 		end
 	end
 
 	table.insert(self.expirationQueue, insertIndex, entry)
 
+	-- we landed at the very front so were the new soonest and the timer has to retarget onto us
 	if insertIndex == 1 then
 		BaseModifierManager.ScheduleNextCleanup(self)
 	end
@@ -176,18 +187,21 @@ function BaseModifierManager.CleanupExpiredModifiers(self: BaseModifierManagerIm
 	local currentTime = os.clock()
 
 	while #self.expirationQueue > 0 do
-		local entry = self.expirationQueue[1]
+		local entry = self.expirationQueue[1] -- front is always the soonest
+		-- front hasnt expired yet so nothing behind it has either so we can stop
 		if currentTime < entry.expireTime then
 			break
 		end
 
-		table.remove(self.expirationQueue, 1)
+		table.remove(self.expirationQueue, 1) -- pull it off the front were handling it now
 
+		-- this id was already removed elsewhere and only lazily flagged so clear the flag and skip it
 		if self.pendingRemovals[entry.modifierId] then
 			self.pendingRemovals[entry.modifierId] = nil
 			continue
 		end
 
+		-- the stack couldve been wiped since this got queued so bail if its gone
 		local stackKeyStacks = self.stacks[entry.stackKey]
 		if not stackKeyStacks then
 			continue
@@ -198,6 +212,7 @@ function BaseModifierManager.CleanupExpiredModifiers(self: BaseModifierManagerIm
 			continue
 		end
 
+		-- scan for the modifier that matches this id then pull it out and mark the stat dirty
 		for index = #stack.modifiers, 1, -1 do
 			local modifier = stack.modifiers[index]
 			if modifier.id == entry.modifierId then
@@ -213,6 +228,7 @@ end
 
 -- reverse lookup of tag to modifier ids so removebytag doesnt have to scan everything
 function BaseModifierManager.AddModifierToTagIndex(self: BaseModifierManagerImpl, stackKey: StackKey, statPath: string, modifier: Modifier)
+	-- build each layer only if its missing so we never index into a nil table
 	if not self.tagIndex[stackKey] then
 		self.tagIndex[stackKey] = {}
 	end
@@ -226,6 +242,7 @@ function BaseModifierManager.AddModifierToTagIndex(self: BaseModifierManagerImpl
 			self.tagIndex[stackKey][statPath][tag] = {}
 		end
 
+		-- store the id under its tag so removebytag can find it instantly instead of scanning the whole stack
 		self.tagIndex[stackKey][statPath][tag][modifier.id] = true
 	end
 end
@@ -241,14 +258,16 @@ function BaseModifierManager.RemoveModifierFromTagIndex(self: BaseModifierManage
 
 	for _, tag in modifier.tags do
 		if self.tagIndex[stackKey][statPath][tag] then
-			self.tagIndex[stackKey][statPath][tag][modifier.id] = nil
+			self.tagIndex[stackKey][statPath][tag][modifier.id] = nil -- drop this id from the tag
 
+			-- that was the last id under the tag so remove the now empty table
 			if next(self.tagIndex[stackKey][statPath][tag]) == nil then
 				self.tagIndex[stackKey][statPath][tag] = nil
 			end
 		end
 	end
 
+	-- keep pruning upward so empty tables dont pile up and leak memory
 	if next(self.tagIndex[stackKey][statPath]) == nil then
 		self.tagIndex[stackKey][statPath] = nil
 	end
@@ -269,6 +288,7 @@ function BaseModifierManager.HandleStackingRule(
 ): string?
 	local existingModifiers: { Modifier } = {}
 
+	-- collect anything already on the stack that came from the same source
 	for _, modifier in stack.modifiers do
 		if modifier.source == source then
 			table.insert(existingModifiers, modifier)
@@ -280,6 +300,7 @@ function BaseModifierManager.HandleStackingRule(
 	end
 
 	if rule == "Replace" then
+		-- replace just drops every old one so the new modifier fully takes over
 		for _, modifier in existingModifiers do
 			BaseModifierManager.RemoveModifierById(self, stackKey, config.path, modifier.id)
 		end
@@ -287,19 +308,22 @@ function BaseModifierManager.HandleStackingRule(
 	elseif rule == "Highest" then
 		local highestValue = config.value
 		for _, modifier in existingModifiers do
+			-- an existing one is already stronger so keep it and tell the caller not to add the new one
 			if modifier.value > highestValue then
 				return modifier.id
 			end
 		end
 
+		-- the new value wins so clear out the weaker existing ones before it gets added
 		for _, modifier in existingModifiers do
 			BaseModifierManager.RemoveModifierById(self, stackKey, config.path, modifier.id)
 		end
 		return nil
 	elseif rule == "Refresh" then
 		if #existingModifiers > 0 then
-			local modifier = existingModifiers[1]
+			local modifier = existingModifiers[1] -- reuse the existing modifier instead of stacking a duplicate
 			modifier.value = config.value
+			-- reset its timer by pulling the old expiry entry and queueing a fresh one
 			if config.duration then
 				BaseModifierManager.RemoveFromExpirationQueue(self, modifier.id)
 				local newExpireTime = os.clock() + config.duration
@@ -444,6 +468,7 @@ end
 
 -- only recompute if dirty otherwise return the cached value the math itself is in calculator
 function BaseModifierManager.CalculateValue(_self: BaseModifierManagerImpl, stack: StatStack): number
+	-- nothing changed since the last calc so hand back the cached number and skip all the math
 	if not stack.isDirty and stack.cachedValue then
 		return stack.cachedValue
 	end
@@ -456,6 +481,7 @@ function BaseModifierManager.CalculateValue(_self: BaseModifierManagerImpl, stac
 		decimalPlaces = stack.decimalPlaces,
 	})
 
+	-- store the fresh result and mark clean so the next Get reuses it instead of recomputing
 	stack.cachedValue = finalValue
 	stack.isDirty = false
 
@@ -560,6 +586,7 @@ end
 function BaseModifierManager.SetBase(self: BaseModifierManagerImpl, stackKey: StackKey, statPath: string, baseValue: number)
 	BaseModifierManager.ValidateStatPath(self, statPath)
 
+	-- baseValue ~= baseValue is only ever true for nan and the math.huge check catches infinity both would poison every calc off this stat
 	if type(baseValue) ~= "number" or baseValue ~= baseValue or math.abs(baseValue) == math.huge then
 		error("Base value must be a valid finite number")
 	end
